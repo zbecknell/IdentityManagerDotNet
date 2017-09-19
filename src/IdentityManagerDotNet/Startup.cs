@@ -11,6 +11,8 @@ using Microsoft.Extensions.DependencyInjection;
 using IdentityManagerDotNet.Data;
 using IdentityManagerDotNet.Models;
 using IdentityManagerDotNet.Services;
+using System.Reflection;
+using IdentityServer4.EntityFramework.DbContexts;
 
 namespace IdentityManagerDotNet
 {
@@ -33,9 +35,27 @@ namespace IdentityManagerDotNet
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
+            services.AddDbContext<PersistedGrantDbContext>();
+            services.AddDbContext<ConfigurationDbContext>();
+
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
+            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+
+            //services.AddIdentityServer()
+                    //.AddDeveloperSigningCredential()
+                    //.AddConfigurationStore(builder =>
+                    //                      builder.ConfigureDbContext(
+                    //                          new DbContextOptionsBuilder()
+                    //                          .UseSqlite(Configuration.GetConnectionString("DefaultConnection"), 
+                    //                                     options => options.MigrationsAssembly(migrationsAssembly))))
+                    //.AddOperationalStore(builder =>
+                                        //builder.ConfigureDbContext(
+                                             //new DbContextOptionsBuilder().UseSqlite(Configuration.GetConnectionString("DefaultConnection"),
+                                                                                    //options => options.MigrationsAssembly(migrationsAssembly))))
+                    //.AddAspNetIdentity<ApplicationUser>();
+            
             services.AddMvc();
         }
 
@@ -54,7 +74,9 @@ namespace IdentityManagerDotNet
 
             app.UseStaticFiles();
 
-            app.UseAuthentication();
+            //app.UseIdentityServer();
+
+            //app.UseAuthentication();
 
             app.UseMvc(routes =>
             {
