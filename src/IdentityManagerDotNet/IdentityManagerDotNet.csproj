@@ -4,6 +4,13 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <UserSecretsId>aspnet-IdentityManagerDotNet-9DE0368C-50FC-4808-A4FA-36698F87A348</UserSecretsId>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="Quickstart\**" />
+    <Content Remove="Quickstart\**" />
+    <EmbeddedResource Remove="Quickstart\**" />
+    <None Remove="Quickstart\**" />
+  </ItemGroup>
   <ItemGroup>
     <None Update="app.db" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

@@ -13,6 +13,7 @@ using Microsoft.Extensions.Options;
 using IdentityManagerDotNet.Models;
 using IdentityManagerDotNet.Models.AccountViewModels;
 using IdentityManagerDotNet.Services;
+using IdentityModel;
 
 namespace IdentityManagerDotNet.Controllers
 {
@@ -224,6 +225,11 @@ namespace IdentityManagerDotNet.Controllers
                 var result = await _userManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
+                    user.Id = await _userManager.GetUserIdAsync(user);
+
+                    await _userManager.AddClaimAsync(user, new Claim(JwtClaimTypes.Subject, user.Id));
+                    await _userManager.AddClaimAsync(user, new Claim(JwtClaimTypes.Name, user.UserName));
+
                     _logger.LogInformation("User created a new account with password.");
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -231,6 +237,7 @@ namespace IdentityManagerDotNet.Controllers
                     await _emailSender.SendEmailConfirmationAsync(model.Email, callbackUrl);
 
                     await _signInManager.SignInAsync(user, isPersistent: false);
+                    
                     _logger.LogInformation("User created a new account with password.");
                     return RedirectToLocal(returnUrl);
                 }

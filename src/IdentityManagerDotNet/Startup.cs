@@ -83,7 +83,7 @@ namespace IdentityManagerDotNet
             app.UseStaticFiles();
 
             app.UseIdentityServer();
-
+            
             app.UseAuthentication();
 
             app.UseMvc(routes =>
