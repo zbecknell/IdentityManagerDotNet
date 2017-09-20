@@ -29,34 +29,42 @@ namespace IdentityManagerDotNet
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlite(Configuration.GetConnectionString("DefaultConnection")));
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
 
-            services.AddDbContext<PersistedGrantDbContext>();
-            services.AddDbContext<ConfigurationDbContext>();
+            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+
+            services.AddDbContext<PersistedGrantDbContext>(options =>
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), config => config.MigrationsAssembly(migrationsAssembly)));
+            services.AddDbContext<ConfigurationDbContext>(options =>
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"),
+                config => config.MigrationsAssembly(migrationsAssembly)));
 
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
-
-            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
-
-            //services.AddIdentityServer()
-                    //.AddDeveloperSigningCredential()
-                    //.AddConfigurationStore(builder =>
-                    //                      builder.ConfigureDbContext(
-                    //                          new DbContextOptionsBuilder()
-                    //                          .UseSqlite(Configuration.GetConnectionString("DefaultConnection"), 
-                    //                                     options => options.MigrationsAssembly(migrationsAssembly))))
-                    //.AddOperationalStore(builder =>
-                                        //builder.ConfigureDbContext(
-                                             //new DbContextOptionsBuilder().UseSqlite(Configuration.GetConnectionString("DefaultConnection"),
-                                                                                    //options => options.MigrationsAssembly(migrationsAssembly))))
-                    //.AddAspNetIdentity<ApplicationUser>();
             
+            services.AddIdentityServer()
+                .AddDeveloperSigningCredential()
+                .AddConfigurationStore(builder =>
+                {
+                    builder.ConfigureDbContext = ConfigureDbContext;
+                })
+                .AddOperationalStore(builder =>
+                {
+                    builder.ConfigureDbContext = ConfigureDbContext;
+                })
+                .AddAspNetIdentity<ApplicationUser>();
+
             services.AddMvc();
+        }
+
+        private void ConfigureDbContext(DbContextOptionsBuilder dbContextOptionsBuilder)
+        {
+            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+            dbContextOptionsBuilder.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), options => options.MigrationsAssembly(migrationsAssembly));
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -74,9 +82,9 @@ namespace IdentityManagerDotNet
 
             app.UseStaticFiles();
 
-            //app.UseIdentityServer();
+            app.UseIdentityServer();
 
-            //app.UseAuthentication();
+            app.UseAuthentication();
 
             app.UseMvc(routes =>
             {
