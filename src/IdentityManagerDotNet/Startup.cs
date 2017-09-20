@@ -46,6 +46,8 @@ namespace IdentityManagerDotNet
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
+            services.AddScoped<AccountService>();
+
             services.AddIdentityServer()
                 .AddDeveloperSigningCredential()
                 .AddConfigurationStore(builder =>

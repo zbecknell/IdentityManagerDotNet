@@ -13,6 +13,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Controllers\AccountController_QuickStart.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.All" Version="2.0.0" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="2.0.0" PrivateAssets="All" />
     <PackageReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Design" Version="2.0.0" PrivateAssets="All" />
@@ -30,6 +34,8 @@
   <ItemGroup>
     <Folder Include="Data\Migrations\IdentityServer\ConfigurationDb\" />
     <Folder Include="Data\Migrations\IdentityServer\PersistedGrantDb\" />
+    <Folder Include="Models\Grants\" />
+    <Folder Include="Models\Consent\" />
   </ItemGroup>
 
 </Project>
