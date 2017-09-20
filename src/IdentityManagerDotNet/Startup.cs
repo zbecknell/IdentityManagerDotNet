@@ -45,7 +45,7 @@ namespace IdentityManagerDotNet
 
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
-            
+
             services.AddIdentityServer()
                 .AddDeveloperSigningCredential()
                 .AddConfigurationStore(builder =>
@@ -80,10 +80,12 @@ namespace IdentityManagerDotNet
                 app.UseExceptionHandler("/Home/Error");
             }
 
+            InitializeDatabase(app);
+
             app.UseStaticFiles();
 
             app.UseIdentityServer();
-            
+
             app.UseAuthentication();
 
             app.UseMvc(routes =>
@@ -92,6 +94,16 @@ namespace IdentityManagerDotNet
                     name: "default",
                     template: "{controller=Home}/{action=Index}/{id?}");
             });
+        }
+
+        private void InitializeDatabase(IApplicationBuilder app)
+        {
+            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
+                serviceScope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>().Database.Migrate();
+                serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>().Database.Migrate();
+            }
         }
     }
 }
