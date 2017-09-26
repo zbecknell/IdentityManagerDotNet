@@ -6,9 +6,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Migrations\**" />
     <Compile Remove="Quickstart\**" />
+    <Content Remove="Migrations\**" />
     <Content Remove="Quickstart\**" />
+    <EmbeddedResource Remove="Migrations\**" />
     <EmbeddedResource Remove="Quickstart\**" />
+    <None Remove="Migrations\**" />
     <None Remove="Quickstart\**" />
   </ItemGroup>
 
@@ -32,10 +36,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Migrations\IdentityServer\ConfigurationDb\" />
-    <Folder Include="Data\Migrations\IdentityServer\PersistedGrantDb\" />
     <Folder Include="Models\Grants\" />
     <Folder Include="Models\Consent\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\IdentityManagerDotNet.DataLayer\IdentityManagerDotNet.DataLayer.csproj" />
   </ItemGroup>
 
 </Project>

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
 using IdentityManagerDotNet.Attributes;
+using IdentityManagerDotNet.DataLayer.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -15,6 +16,7 @@ using IdentityManagerDotNet.Models;
 using IdentityManagerDotNet.Models.AccountViewModels;
 using IdentityManagerDotNet.Services;
 using IdentityModel;
+using IdentityServer4.Events;
 using IdentityServer4.Services;
 
 namespace IdentityManagerDotNet.Controllers
@@ -83,6 +85,16 @@ namespace IdentityManagerDotNet.Controllers
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
+
+                    var user = await _userManager.FindByNameAsync(model.Username);
+                    await HttpContext.SignInAsync(User,
+                        new AuthenticationProperties()
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.Add(AccountOptions.RememberMeLoginDuration)
+                        });
+                    await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.UserName, user.UserName));
+
                     return RedirectToLocal(returnUrl);
                 }
                 if (result.RequiresTwoFactor)

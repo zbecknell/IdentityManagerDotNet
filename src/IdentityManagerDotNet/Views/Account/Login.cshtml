@@ -46,7 +46,7 @@
     </div>
 <div class="col-md-6 col-md-offset-2">
     @{
-        if (Model.ExternalProviders.Any())
+        if (Model.ExternalProviders?.Any() ?? false)
         {
         <section>
             <h4>Use another service to log in.</h4>

@@ -1,18 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading.Tasks;
+using IdentityManagerDotNet.DataLayer;
+using IdentityManagerDotNet.DataLayer.Entities;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using IdentityManagerDotNet.Data;
 using IdentityManagerDotNet.Models;
 using IdentityManagerDotNet.Services;
-using System.Reflection;
+using IdentityModel;
 using IdentityServer4.EntityFramework.DbContexts;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.IdentityModel.Tokens;
 
 namespace IdentityManagerDotNet
 {
@@ -29,44 +31,56 @@ namespace IdentityManagerDotNet
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddDbContext<ApplicationDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            {
+                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
+            });
 
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
-
-            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
-
-            services.AddDbContext<PersistedGrantDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), config => config.MigrationsAssembly(migrationsAssembly)));
-            services.AddDbContext<ConfigurationDbContext>(options =>
-                options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"),
-                config => config.MigrationsAssembly(migrationsAssembly)));
 
             // Add application services.
             services.AddTransient<IEmailSender, EmailSender>();
 
             services.AddScoped<AccountService>();
 
-            services.AddIdentityServer()
-                .AddDeveloperSigningCredential()
-                .AddConfigurationStore(builder =>
+            services.AddAuthentication(options =>
                 {
-                    builder.ConfigureDbContext = ConfigureDbContext;
+                    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultChallengeScheme = "oidc";
                 })
-                .AddOperationalStore(builder =>
+                .AddCookie(options =>
                 {
-                    builder.ConfigureDbContext = ConfigureDbContext;
+                    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
+                    options.Cookie.Name = "idmanager";
                 })
-                .AddAspNetIdentity<ApplicationUser>();
+                .AddOpenIdConnect("oidc", options =>
+                {
+                    options.Authority = "https://localhost:44300/";
+                    options.RequireHttpsMetadata = true;
 
-            services.AddMvc();
-        }
+                    options.ClientId = "idmanager";
+                    options.ClientSecret = "secret";
 
-        private void ConfigureDbContext(DbContextOptionsBuilder dbContextOptionsBuilder)
-        {
-            var migrationsAssembly = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
-            dbContextOptionsBuilder.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"), options => options.MigrationsAssembly(migrationsAssembly));
+                    options.ResponseType = "code id_token";
+
+                    options.Scope.Clear();
+                    options.Scope.Add("openid");
+                    options.Scope.Add("profile");
+                    options.Scope.Add("email");
+                    options.Scope.Add("offline_access");
+
+                    options.GetClaimsFromUserInfoEndpoint = true;
+                    options.SaveTokens = true;
+
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        NameClaimType = JwtClaimTypes.Name,
+                        RoleClaimType = JwtClaimTypes.Role,
+                    };
+                });
+
+        services.AddMvc();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -82,20 +96,13 @@ namespace IdentityManagerDotNet
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            InitializeDatabase(app);
-
             app.UseStaticFiles();
 
-            app.UseIdentityServer();
+            InitializeDatabase(app);
 
             app.UseAuthentication();
 
-            app.UseMvc(routes =>
-            {
-                routes.MapRoute(
-                    name: "default",
-                    template: "{controller=Home}/{action=Index}/{id?}");
-            });
+            app.UseMvcWithDefaultRoute();
         }
 
         private void InitializeDatabase(IApplicationBuilder app)
