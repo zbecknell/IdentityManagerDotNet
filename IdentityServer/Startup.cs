@@ -10,8 +10,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using IdentityServer.Services;
 using IdentityServer4.EntityFramework.DbContexts;
+using IdentityServer4.EntityFramework.Mappers;
+using IdentityServerWithAspNetIdentity.Services;
 
 namespace IdentityServer
 {
@@ -71,7 +72,8 @@ namespace IdentityServer
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            InitializeDatabase(app);
+            ApplyDatabaseMigrations(app);
+            InitializeClients(app);
 
             app.UseStaticFiles();
 
@@ -85,13 +87,39 @@ namespace IdentityServer
             });
         }
 
-        private void InitializeDatabase(IApplicationBuilder app)
+        private void ApplyDatabaseMigrations(IApplicationBuilder app)
         {
             using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
             {
                 serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
                 serviceScope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>().Database.Migrate();
                 serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>().Database.Migrate();
+            }
+        }
+
+        private void InitializeClients(IApplicationBuilder app)
+        {
+            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
+            {
+                var context = serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>();
+
+                if (!context.Clients.Any())
+                {
+                    foreach (var client in Config.GetClients())
+                    {
+                        context.Clients.Add(client.ToEntity());
+                    }
+                    context.SaveChanges();
+                }
+
+                if (!context.IdentityResources.Any())
+                {
+                    foreach (var resource in Config.GetIdentityResources())
+                    {
+                        context.IdentityResources.Add(resource.ToEntity());
+                    }
+                    context.SaveChanges();
+                }
             }
         }
     }

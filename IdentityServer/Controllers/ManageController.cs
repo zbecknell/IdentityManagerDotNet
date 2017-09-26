@@ -5,17 +5,18 @@ using System.Text;
 using System.Text.Encodings.Web;
 using System.Threading.Tasks;
 using IdentityManagerDotNet.DataLayer.Entities;
+using IdentityServer.Extensions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using IdentityServer.Models;
-using IdentityServer.Models.ManageViewModels;
-using IdentityServer.Services;
+using IdentityServerWithAspNetIdentity.Models;
+using IdentityServerWithAspNetIdentity.Models.ManageViewModels;
+using IdentityServerWithAspNetIdentity.Services;
 
-namespace IdentityServer.Controllers
+namespace IdentityServerWithAspNetIdentity.Controllers
 {
     [Authorize]
     [Route("[controller]/[action]")]
@@ -496,7 +497,7 @@ namespace IdentityServer.Controllers
         {
             return string.Format(
                 AuthenicatorUriFormat,
-                _urlEncoder.Encode("IdentityServer"),
+                _urlEncoder.Encode("IdentityServerWithAspNetIdentity"),
                 _urlEncoder.Encode(email),
                 unformattedKey);
         }

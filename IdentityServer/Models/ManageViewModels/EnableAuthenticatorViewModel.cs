@@ -5,7 +5,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace IdentityServer.Models.ManageViewModels
+namespace IdentityServerWithAspNetIdentity.Models.ManageViewModels
 {
     public class EnableAuthenticatorViewModel
     {

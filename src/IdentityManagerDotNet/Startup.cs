@@ -35,6 +35,9 @@ namespace IdentityManagerDotNet
                 options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection"));
             });
 
+            services.AddDbContext<PersistedGrantDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+            services.AddDbContext<ConfigurationDbContext>(options => options.UseSqlServer(Configuration.GetConnectionString("DefaultConnection")));
+
             services.AddIdentity<ApplicationUser, IdentityRole>()
                 .AddEntityFrameworkStores<ApplicationDbContext>()
                 .AddDefaultTokenProviders();
@@ -56,7 +59,7 @@ namespace IdentityManagerDotNet
                 })
                 .AddOpenIdConnect("oidc", options =>
                 {
-                    options.Authority = "https://localhost:44300/";
+                    options.Authority = "https://localhost:44354/";
                     options.RequireHttpsMetadata = true;
 
                     options.ClientId = "idmanager";
@@ -67,7 +70,7 @@ namespace IdentityManagerDotNet
                     options.Scope.Clear();
                     options.Scope.Add("openid");
                     options.Scope.Add("profile");
-                    options.Scope.Add("email");
+                    //options.Scope.Add("email");
                     options.Scope.Add("offline_access");
 
                     options.GetClaimsFromUserInfoEndpoint = true;
@@ -98,21 +101,9 @@ namespace IdentityManagerDotNet
 
             app.UseStaticFiles();
 
-            InitializeDatabase(app);
-
             app.UseAuthentication();
 
             app.UseMvcWithDefaultRoute();
-        }
-
-        private void InitializeDatabase(IApplicationBuilder app)
-        {
-            using (var serviceScope = app.ApplicationServices.GetService<IServiceScopeFactory>().CreateScope())
-            {
-                serviceScope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.Migrate();
-                serviceScope.ServiceProvider.GetRequiredService<PersistedGrantDbContext>().Database.Migrate();
-                serviceScope.ServiceProvider.GetRequiredService<ConfigurationDbContext>().Database.Migrate();
-            }
         }
     }
 }

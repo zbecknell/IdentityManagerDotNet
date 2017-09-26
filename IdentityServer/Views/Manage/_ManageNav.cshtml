@@ -1,4 +1,6 @@
-﻿@using IdentityServer.Views.Manage
+﻿@using IdentityManagerDotNet.DataLayer.Entities
+@using IdentityServerWithAspNetIdentity.Views.Manage
+@using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
 @{
     var hasExternalLogins = (await SignInManager.GetExternalAuthenticationSchemesAsync()).Any();
