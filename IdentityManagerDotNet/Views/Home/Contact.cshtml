@@ -15,3 +15,10 @@
     <strong>Support:</strong> <a href="mailto:Support@example.com">Support@example.com</a><br />
     <strong>Marketing:</strong> <a href="mailto:Marketing@example.com">Marketing@example.com</a>
 </address>
+
+<h2>User Claims</h2>
+
+@foreach (var claim in User.Claims)
+{
+    <b>@claim.Type</b> @claim.Value<br/>
+}

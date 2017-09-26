@@ -16,6 +16,7 @@ using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using IdentityModel;
+using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 
 namespace IdentityManagerDotNet
 {
@@ -45,27 +46,29 @@ namespace IdentityManagerDotNet
                 {
                     options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                     options.DefaultChallengeScheme = "oidc";
+
+                    options.DefaultScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultForbidScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
+                    options.DefaultSignOutScheme = CookieAuthenticationDefaults.AuthenticationScheme;
                 })
-                .AddCookie(options =>
-                {
-                    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
-                    options.Cookie.Name = "idmanager";
-                })
+                .AddCookie("Cookies")
                 .AddOpenIdConnect("oidc", options =>
                 {
+                    options.SignInScheme = "Cookies";
+
                     options.Authority = "https://localhost:44354/";
-                    options.RequireHttpsMetadata = true;
+                    options.RequireHttpsMetadata = false;
 
                     options.ClientSecret = "secret";
                     options.ClientId = "idmanager";
 
                     options.ResponseType = "code id_token";
 
-                    options.Scope.Clear();
                     options.Scope.Add("openid");
                     options.Scope.Add("profile");
                     //options.Scope.Add("email");
-                    options.Scope.Add("api1");
                     options.Scope.Add("offline_access");
 
                     options.GetClaimsFromUserInfoEndpoint = true;
@@ -95,10 +98,9 @@ namespace IdentityManagerDotNet
                 app.UseExceptionHandler("/Home/Error");
             }
 
-            app.UseStaticFiles();
-
             app.UseAuthentication();
 
+            app.UseStaticFiles();
             app.UseMvc(routes =>
             {
                 routes.MapRoute(
