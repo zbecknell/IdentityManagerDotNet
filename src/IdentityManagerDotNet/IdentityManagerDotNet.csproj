@@ -4,8 +4,20 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <UserSecretsId>aspnet-IdentityManagerDotNet-9DE0368C-50FC-4808-A4FA-36698F87A348</UserSecretsId>
   </PropertyGroup>
+
   <ItemGroup>
-    <None Update="app.db" CopyToOutputDirectory="PreserveNewest" />
+    <Compile Remove="Migrations\**" />
+    <Compile Remove="Quickstart\**" />
+    <Content Remove="Migrations\**" />
+    <Content Remove="Quickstart\**" />
+    <EmbeddedResource Remove="Migrations\**" />
+    <EmbeddedResource Remove="Quickstart\**" />
+    <None Remove="Migrations\**" />
+    <None Remove="Quickstart\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="Controllers\AccountController_QuickStart.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +33,15 @@
     <DotNetCliToolReference Include="Microsoft.EntityFrameworkCore.Tools.DotNet" Version="2.0.0" />
     <DotNetCliToolReference Include="Microsoft.Extensions.SecretManager.Tools" Version="2.0.0" />
     <DotNetCliToolReference Include="Microsoft.VisualStudio.Web.CodeGeneration.Tools" Version="2.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\Grants\" />
+    <Folder Include="Models\Consent\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\IdentityManagerDotNet.DataLayer\IdentityManagerDotNet.DataLayer.csproj" />
   </ItemGroup>
 
 </Project>

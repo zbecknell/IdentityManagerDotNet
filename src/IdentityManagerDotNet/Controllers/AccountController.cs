@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Security.Claims;
 using System.Threading.Tasks;
+using IdentityManagerDotNet.Attributes;
+using IdentityManagerDotNet.DataLayer.Entities;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -13,32 +15,44 @@ using Microsoft.Extensions.Options;
 using IdentityManagerDotNet.Models;
 using IdentityManagerDotNet.Models.AccountViewModels;
 using IdentityManagerDotNet.Services;
+using IdentityModel;
+using IdentityServer4.Events;
+using IdentityServer4.Services;
 
 namespace IdentityManagerDotNet.Controllers
 {
     [Authorize]
     [Route("[controller]/[action]")]
+    [SecurityHeaders]
     public class AccountController : Controller
     {
         private readonly UserManager<ApplicationUser> _userManager;
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly IEmailSender _emailSender;
         private readonly ILogger _logger;
+        private readonly IEventService _events;
+        private readonly AccountService _account;
 
         public AccountController(
             UserManager<ApplicationUser> userManager,
             SignInManager<ApplicationUser> signInManager,
             IEmailSender emailSender,
-            ILogger<AccountController> logger)
+            ILogger<AccountController> logger,
+            IEventService events,
+            AccountService account)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _emailSender = emailSender;
             _logger = logger;
+            _events = events;
+            _account = account;
         }
 
         [TempData]
         public string ErrorMessage { get; set; }
+
+        #region Login/Logout
 
         [HttpGet]
         [AllowAnonymous]
@@ -47,8 +61,14 @@ namespace IdentityManagerDotNet.Controllers
             // Clear the existing external cookie to ensure a clean login process
             await HttpContext.SignOutAsync(IdentityConstants.ExternalScheme);
 
-            ViewData["ReturnUrl"] = returnUrl;
-            return View();
+            var model = await _account.BuildLoginViewModelAsync(returnUrl);
+
+            if (model.IsExternalLoginOnly)
+            {
+                return await ExternalLogin(model.ExternalLoginScheme, returnUrl);
+            }
+
+            return View(model);
         }
 
         [HttpPost]
@@ -61,15 +81,25 @@ namespace IdentityManagerDotNet.Controllers
             {
                 // This doesn't count login failures towards account lockout
                 // To enable password failures to trigger account lockout, set lockoutOnFailure: true
-                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, model.RememberMe, lockoutOnFailure: false);
+                var result = await _signInManager.PasswordSignInAsync(model.Username, model.Password, model.RememberLogin, lockoutOnFailure: false);
                 if (result.Succeeded)
                 {
                     _logger.LogInformation("User logged in.");
+
+                    var user = await _userManager.FindByNameAsync(model.Username);
+                    await HttpContext.SignInAsync(User,
+                        new AuthenticationProperties()
+                        {
+                            IsPersistent = true,
+                            ExpiresUtc = DateTimeOffset.UtcNow.Add(AccountOptions.RememberMeLoginDuration)
+                        });
+                    await _events.RaiseAsync(new UserLoginSuccessEvent(user.UserName, user.UserName, user.UserName));
+
                     return RedirectToLocal(returnUrl);
                 }
                 if (result.RequiresTwoFactor)
                 {
-                    return RedirectToAction(nameof(LoginWith2fa), new { returnUrl, model.RememberMe });
+                    return RedirectToAction(nameof(LoginWith2fa), new { returnUrl, model.RememberLogin });
                 }
                 if (result.IsLockedOut)
                 {
@@ -204,6 +234,19 @@ namespace IdentityManagerDotNet.Controllers
             return View();
         }
 
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Logout()
+        {
+            await _signInManager.SignOutAsync();
+            _logger.LogInformation("User logged out.");
+            return RedirectToAction(nameof(HomeController.Index), "Home");
+        }
+
+        #endregion
+
+        #region Register
+
         [HttpGet]
         [AllowAnonymous]
         public IActionResult Register(string returnUrl = null)
@@ -224,6 +267,9 @@ namespace IdentityManagerDotNet.Controllers
                 var result = await _userManager.CreateAsync(user, model.Password);
                 if (result.Succeeded)
                 {
+                    await _userManager.AddClaimAsync(user, new Claim(JwtClaimTypes.Subject, user.UserName));
+                    await _userManager.AddClaimAsync(user, new Claim(JwtClaimTypes.Name, user.UserName));
+
                     _logger.LogInformation("User created a new account with password.");
 
                     var code = await _userManager.GenerateEmailConfirmationTokenAsync(user);
@@ -231,6 +277,7 @@ namespace IdentityManagerDotNet.Controllers
                     await _emailSender.SendEmailConfirmationAsync(model.Email, callbackUrl);
 
                     await _signInManager.SignInAsync(user, isPersistent: false);
+
                     _logger.LogInformation("User created a new account with password.");
                     return RedirectToLocal(returnUrl);
                 }
@@ -241,22 +288,18 @@ namespace IdentityManagerDotNet.Controllers
             return View(model);
         }
 
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Logout()
-        {
-            await _signInManager.SignOutAsync();
-            _logger.LogInformation("User logged out.");
-            return RedirectToAction(nameof(HomeController.Index), "Home");
-        }
+        #endregion
+
+        #region External Login
 
         [HttpPost]
         [AllowAnonymous]
         [ValidateAntiForgeryToken]
-        public IActionResult ExternalLogin(string provider, string returnUrl = null)
+        public async Task<IActionResult> ExternalLogin(string provider, string returnUrl = null)
         {
             // Request a redirect to the external login provider.
             var redirectUrl = Url.Action(nameof(ExternalLoginCallback), "Account", new { returnUrl });
+
             var properties = _signInManager.ConfigureExternalAuthenticationProperties(provider, redirectUrl);
             return Challenge(properties, provider);
         }
@@ -329,22 +372,9 @@ namespace IdentityManagerDotNet.Controllers
             return View(nameof(ExternalLogin), model);
         }
 
-        [HttpGet]
-        [AllowAnonymous]
-        public async Task<IActionResult> ConfirmEmail(string userId, string code)
-        {
-            if (userId == null || code == null)
-            {
-                return RedirectToAction(nameof(HomeController.Index), "Home");
-            }
-            var user = await _userManager.FindByIdAsync(userId);
-            if (user == null)
-            {
-                throw new ApplicationException($"Unable to load user with ID '{userId}'.");
-            }
-            var result = await _userManager.ConfirmEmailAsync(user, code);
-            return View(result.Succeeded ? "ConfirmEmail" : "Error");
-        }
+        #endregion
+
+        #region Forgot/Reset Password
 
         [HttpGet]
         [AllowAnonymous]
@@ -428,6 +458,25 @@ namespace IdentityManagerDotNet.Controllers
         public IActionResult ResetPasswordConfirmation()
         {
             return View();
+        }
+
+        #endregion
+
+        [HttpGet]
+        [AllowAnonymous]
+        public async Task<IActionResult> ConfirmEmail(string userId, string code)
+        {
+            if (userId == null || code == null)
+            {
+                return RedirectToAction(nameof(HomeController.Index), "Home");
+            }
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+            {
+                throw new ApplicationException($"Unable to load user with ID '{userId}'.");
+            }
+            var result = await _userManager.ConfirmEmailAsync(user, code);
+            return View(result.Succeeded ? "ConfirmEmail" : "Error");
         }
 
 

@@ -33,3 +33,7 @@
         display: none;
     }
 }
+
+.validation-summary-valid {
+    display: none;
+}
